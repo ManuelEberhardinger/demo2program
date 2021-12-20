@@ -1,0 +1,6 @@
+datasets/
+lightning_logs/
+*.out
+.ipynb_checkpoints/
+*/__pycache__/*
+*.pyc

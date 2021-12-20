@@ -1,5 +1,5 @@
 import numpy as np
-from karel import state_table
+from karel_env.karel import state_table
 
 
 class color_code:
@@ -55,7 +55,7 @@ def state2image(s, grid_size=10, root_dir='./'):
     img = np.ones((h*grid_size, w*grid_size, 3))
     import h5py
     import os.path as osp
-    f = h5py.File(osp.join(root_dir, 'asset/texture.hdf5'), 'r')
+    f = h5py.File(osp.join(root_dir, 'karel_env/asset/texture.hdf5'), 'r')
     wall_img = f['wall']
     marker_img = f['marker']
     # wall

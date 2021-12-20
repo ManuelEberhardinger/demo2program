@@ -1,4 +1,4 @@
-from dsl_syntax import KarelDSLSyntax
+from karel_env.dsl.dsl_syntax import KarelDSLSyntax
 
 
 class KarelDSLProbSyntax(KarelDSLSyntax):

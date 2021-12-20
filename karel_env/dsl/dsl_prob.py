@@ -6,7 +6,7 @@ Code is adapted from https://github.com/carpedm20/karel
 
 import numpy as np
 
-from dsl_base import KarelDSLBase, MIN_INT, MAX_INT, INT_PREFIX
+from karel_env.dsl.dsl_base import KarelDSLBase, MIN_INT, MAX_INT, INT_PREFIX
 
 
 class KarelDSLProb(KarelDSLBase):
