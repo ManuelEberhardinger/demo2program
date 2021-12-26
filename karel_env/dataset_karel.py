@@ -13,11 +13,13 @@ rs = np.random.RandomState(123)
 
 class Dataset(object):
 
-    def __init__(self, ids, dataset_path, name='default', num_k=10, is_train=True):
+    def __init__(self, ids, dataset_path, name='default', num_k=10, is_train=True, vocab_size=50):
         self._ids = list(ids)
         self.name = name
         self.num_k = num_k
         self.is_train = is_train
+        
+        self.pad_token = vocab_size
 
         filename = 'data.hdf5'
         file = osp.join(dataset_path, filename)
@@ -27,6 +29,7 @@ class Dataset(object):
         self.dsl_type = self.data['data_info']['dsl_type'].value
         self.num_demo = int(self.data['data_info']['num_demo_per_program'].value)
         self.max_demo_len = int(self.data['data_info']['max_demo_length'].value)
+
         self.max_program_len = int(self.data['data_info']['max_program_length'].value)
         self.num_program_tokens = int(self.data['data_info']['num_program_tokens'].value)
         self.num_action_tokens = int(self.data['data_info']['num_action_tokens'].value)
@@ -44,7 +47,7 @@ class Dataset(object):
         program_tokens = self.data[id]['program'].value
         program = np.zeros([self.num_program_tokens, self.max_program_len], dtype=bool)
         program[:, :len(program_tokens)][program_tokens, np.arange(len(program_tokens))] = 1
-        padded_program_tokens = np.zeros([self.max_program_len], dtype=program_tokens.dtype)
+        padded_program_tokens = np.full([self.max_program_len], self.pad_token, dtype=program_tokens.dtype)
         padded_program_tokens[:len(program_tokens)] = program_tokens
 
         demo_data = self.data[id]['s_h'].value
@@ -77,7 +80,9 @@ class Dataset(object):
             action_history.append(a_h)
         action_history = np.stack(action_history, axis=0)
         padded_action_history_tokens = np.argmax(action_history, axis=2)
-
+        item_idx = np.where(padded_action_history_tokens==5) # we check for the end of sequence and pad the rest with it
+        padded_action_history_tokens[:, item_idx[1][0]+1:] = 6
+        
         # dim: [test_k, action_space, max len of demo - 1]
         test_action_history_tokens = self.data[id]['test_a_h'].value
         test_action_history = []
@@ -92,6 +97,8 @@ class Dataset(object):
             test_action_history.append(test_a_h)
         test_action_history = np.stack(test_action_history, axis=0)
         padded_test_action_history_tokens = np.argmax(test_action_history, axis=2)
+        item_idx = np.where(padded_test_action_history_tokens==5) # we check for the end of sequence and pad the rest with it
+        padded_test_action_history_tokens[:, item_idx[1][0]+1:] = 6
 
         # program length: [1]
         program_length = np.array([len(program_tokens)], dtype=np.float32)
@@ -103,11 +110,28 @@ class Dataset(object):
         # per
         pad_per_data = np.pad(
             per_data, ((0, 0), (0, self.max_demo_len-per_data.shape[1]), (0, 0)),
-            mode='constant', constant_values=0)
+            mode='constant', constant_values=2)
+        item_idx = np.where(pad_per_data==2) 
+        if len(item_idx[0]) > 0:#
+            pad_per_data[:, item_idx[1][0]+1:] = 3
+            
+        def convert_to_dec(row):
+            if 2 in row:
+                return 32
+            elif 3 in row:
+                return 33
+            else:
+                return int(''.join(row.astype(int).astype(str)), 2)
+            
+        pad_per_data = np.apply_along_axis(convert_to_dec, 2, pad_per_data)
         pad_test_per_data = np.pad(
             test_per_data, ((0, 0), (0, self.max_demo_len-test_per_data.shape[1]), (0, 0)),
-            mode='constant', constant_values=0)
-
+            mode='constant', constant_values=2)
+        item_idx = np.where(pad_test_per_data==2) 
+        if len(item_idx[0]) > 0:#
+            pad_test_per_data[:, item_idx[1][0]+1:] = 3
+        pad_test_per_data = np.apply_along_axis(convert_to_dec, 2, pad_test_per_data)
+        
         return program, padded_program_tokens, demo[:self.num_k], test_demo, \
             action_history[:self.num_k], padded_action_history_tokens[:self.num_k], \
             test_action_history, padded_test_action_history_tokens, \
